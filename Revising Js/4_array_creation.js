@@ -33,12 +33,16 @@
 // Spread Operator (...) — MODERN DEFAULT
 let myArray1 = [1,2,3,4,5,6,7,8,9,10];
 let myArray2 = [11,12,13,14,15,16,17,18,19,20];
+let myArray3 = [111,112,131,114,115,116,117,118,119,120];
 const copyArray1 = [...myArray1];
 const copyArray2 = [...myArray2];
-console.log(`myArray1 = ${myArray1}`);
-console.log(`myArray2 = ${myArray2}`);
-console.log(`copyArray1 = ${copyArray1}`);
-console.log(`copyArray2 = ${copyArray2}`);
+// console.log(`myArray1 = ${myArray1}`);
+// console.log(`myArray2 = ${myArray2}`);
+// console.log(`copyArray1 = ${copyArray1}`);
+// console.log(`copyArray2 = ${copyArray2}`);
 
-let mergedArray = [...myArray1, ...myArray2];
-console.log(`mergedArray: ${mergedArray}`);
+// let mergedArray = [...myArray1, ...myArray2];
+// console.log(`mergedArray: ${mergedArray}`);
+
+const newMergedArray = [...myArray1, ...myArray2, ...myArray3];
+console.log("newMergedArray: ",newMergedArray);
