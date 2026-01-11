@@ -1,0 +1,42 @@
+export const users = [
+  {
+    id: 1,
+    name: "Ali",
+    age: 22,
+    isActive: true,
+    role: "user",
+    purchases: [120, 340, 50],
+  },
+  {
+    id: 2,
+    name: "Sara",
+    age: 28,
+    isActive: false,
+    role: "admin",
+    purchases: [560, 20],
+  },
+  {
+    id: 3,
+    name: "Ahmed",
+    age: 19,
+    isActive: true,
+    role: "user",
+    purchases: [],
+  },
+  {
+    id: 4,
+    name: "Zara",
+    age: 31,
+    isActive: true,
+    role: "user",
+    purchases: [220, 180],
+  },
+  {
+    id: 5,
+    name: "Usman",
+    age: 25,
+    isActive: false,
+    role: "user",
+    purchases: [90],
+  },
+];
