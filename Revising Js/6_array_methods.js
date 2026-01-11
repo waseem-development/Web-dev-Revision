@@ -346,7 +346,7 @@ That returned value becomes the accumulator for the next iteration
 const numsReduce = [1,2,3,4,5,6,7,9,10];
 const sumReduce = numsReduce.reduce((acc, n) => {
     return acc + n;
-}, 0);
+}, 0);  // ==> 0 is an initial value which in this case is 0;
 console.log(sumReduce);
 
 // Step-by-step:
@@ -358,3 +358,23 @@ console.log(sumReduce);
 // 4	6	4	10
 
 // Final result: 10
+
+
+const reduceToObjectArray = ["apple", "banana", "apple", "orange"];
+const countToObject = reduceToObjectArray.reduce((acc, fruit) => {
+  acc[fruit] = (acc[fruit] || 0) + 1;
+  return acc;
+}, {});  // ==> {} is the initial value which in this case is an empty object, since we wanna create an object from an array, this initial value is mendatory, without this there would not be any object in result 
+
+console.log(countToObject);
+
+const reduceNums = [1, 2, 3, 4, 5];
+const resultReducedNums = reduceNums.reduce((acc, num) => {
+  if (num % 2 === 0) {
+    acc.push(num*10);
+  }
+  return acc;
+}, []);
+console.log(resultReducedNums);
+
+
