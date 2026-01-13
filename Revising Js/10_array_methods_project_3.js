@@ -1,4 +1,4 @@
-import { users } from "./10_array_methods_project_3_data.js";
+import { users } from "./data.js";
 
 const activeUsers = users
   .filter((user) => user.isActive)
