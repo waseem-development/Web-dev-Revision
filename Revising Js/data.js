@@ -43,7 +43,7 @@ export const users = [
     id: 6,
     name: "Lamiah",
     age: 41,
-    isActive: this,
+    isActive: true,
     role: "superadmin",
     purchases: [90],
   },
