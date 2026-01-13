@@ -39,4 +39,12 @@ export const users = [
     role: "user",
     purchases: [90],
   },
+    {
+    id: 6,
+    name: "Lamiah",
+    age: 41,
+    isActive: this,
+    role: "superadmin",
+    purchases: [90],
+  },
 ];
