@@ -16,10 +16,10 @@ const readFilesAndCountWords = ((files, index = 0) => {
         }
         console.log(`Content of ${files[index]}`);
         const words = data.split(/\s+/).filter(Boolean).length;
-        console.log(data);
         console.log(`Words Count: ${words}`);
+        console.log(data);
         
         readFilesAndCountWords(files, index+1);
     });
 })
-readFilesAndCountWords(files)
+readFilesAndCountWords(files);
