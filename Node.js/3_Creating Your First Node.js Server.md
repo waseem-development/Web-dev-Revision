@@ -7,6 +7,7 @@
 The `http` module is a **core Node.js module** (built into Node, no installation required).
 
 It allows Node.js to:
+
 - Act as an **HTTP server** (receive requests)
 - Act as an **HTTP client** (send requests)
 
@@ -37,10 +38,10 @@ const server = http.createServer((req, res) => {
 
 ### Parameters Explained
 
-| Parameter | Meaning |
-|---------|--------|
-| `req` | Incoming request object (from client) |
-| `res` | Outgoing response object (from server) |
+| Parameter | Meaning                                |
+| --------- | -------------------------------------- |
+| `req`   | Incoming request object (from client)  |
+| `res`   | Outgoing response object (from server) |
 
 ---
 
@@ -63,10 +64,13 @@ console.log(req.method, req.url);
 ```
 
 A browser request to:
+
 ```
 http://localhost:3000/about
 ```
+
 Produces:
+
 ```
 GET /about
 ```
@@ -90,16 +94,16 @@ The `res` object controls **what the server sends back**.
 
 Status codes tell the client **what happened**.
 
-| Code | Meaning |
-|----|--------|
-| 200 | Success |
-| 201 | Created |
-| 301 | Redirect |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Not Found |
-| 500 | Server Error |
+| Code | Meaning      |
+| ---- | ------------ |
+| 200  | Success      |
+| 201  | Created      |
+| 301  | Redirect     |
+| 400  | Bad Request  |
+| 401  | Unauthorized |
+| 403  | Forbidden    |
+| 404  | Not Found    |
+| 500  | Server Error |
 
 Example:
 
@@ -121,13 +125,13 @@ res.writeHead(200, {
 
 ### Common Content Types
 
-| Content-Type | Used For |
-|------------|---------|
-| text/plain | Plain text |
-| text/html | HTML pages |
-| application/json | APIs |
-| image/png | Images |
-| video/mp4 | Videos |
+| Content-Type     | Used For   |
+| ---------------- | ---------- |
+| text/plain       | Plain text |
+| text/html        | HTML pages |
+| application/json | APIs       |
+| image/png        | Images     |
+| video/mp4        | Videos     |
 
 Example JSON response:
 
@@ -158,10 +162,10 @@ res.end("Hello World");
 
 A **port** tells the OS which application should receive data.
 
-| Service | Port |
-|------|-----|
-| HTTP | 80 |
-| HTTPS | 443 |
+| Service          | Port        |
+| ---------------- | ----------- |
+| HTTP             | 80          |
+| HTTPS            | 443         |
 | Node Dev Servers | 3000 / 5000 |
 
 ---
@@ -181,6 +185,7 @@ server.listen(3000, () => {
 - Starts accepting connections
 
 Without `listen()`:
+
 - Server exists
 - But **cannot receive requests**
 
@@ -223,11 +228,13 @@ server.listen(3000);
 ## 11. Why Frameworks Exist (Preview)
 
 Manual routing becomes messy:
+
 - Too many `if/else`
 - Hard to scale
 - No middleware
 
 Frameworks like **Express / NestJS**:
+
 - Abstract routing
 - Handle parsing
 - Improve structure
@@ -241,6 +248,7 @@ Browser → HTTP Request → Node Server → Logic → Response → Browser
 ```
 
 Node.js:
+
 - Non-blocking
 - Event-driven
 - Single-threaded with async power
@@ -254,4 +262,3 @@ Node.js:
 3. Serving HTML files
 4. Streams & performance
 5. Express after mastery
-
