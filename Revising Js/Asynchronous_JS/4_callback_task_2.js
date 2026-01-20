@@ -2,7 +2,6 @@ const fs = require("fs");
 const path = require("path");
 
 const files = ["file1.txt", "file2.txt", "file3.txt"];
-console.log();
 
 const readFilesAndCountWords = ((files, index = 0) => {
     if (index >= files.length) return;
