@@ -1,9 +1,4 @@
-
 # How_to_deploy_backend_code_in_production
-
-> Industry-friendly, beginner-safe, but professionally accurate backend notes.
-> These notes explain Express.js, HTTP, Node.js setup, environment variables,
-> and production-ready thinking in clear language.
 
 ---
 
@@ -12,12 +7,14 @@
 Backend works on a client–server model.
 
 Clients:
+
 - Browser
 - Mobile apps
 - Other servers
 - Tools like Postman
 
 Server:
+
 - A software program
 - Always running
 - Always listening for requests
@@ -37,12 +34,12 @@ Port = door number.
 
 ## 3. HTTP Methods (Short Explanation)
 
-GET – Read data  
-POST – Create data  
-PUT – Replace data  
-PATCH – Update partial data  
-DELETE – Remove data  
-HEAD – Metadata only  
+GET – Read data
+POST – Create data
+PUT – Replace data
+PATCH – Update partial data
+DELETE – Remove data
+HEAD – Metadata only
 OPTIONS – Ask server rules (CORS)
 
 ❌ PUSH and UPDATE are not HTTP methods.
@@ -54,6 +51,7 @@ OPTIONS – Ask server rules (CORS)
 Backend requires:
 
 ### Programming Language + Framework
+
 - JavaScript: Node, Express, Nest
 - Java: Spring Boot
 - Python: Django, Flask
@@ -62,6 +60,7 @@ Backend requires:
 - C++: Crow
 
 ### Database
+
 - SQL: MySQL, PostgreSQL, SQLite
 - NoSQL: MongoDB
 - Cloud: AWS, Azure, GCP
@@ -72,10 +71,12 @@ Backend requires:
 ## 5. ORM vs ODM
 
 ORM:
+
 - SQL databases
 - Prisma, Sequelize
 
 ODM:
+
 - NoSQL databases
 - Mongoose
 
@@ -84,6 +85,7 @@ ODM:
 ## 6. Data Sources
 
 Data can come from:
+
 - Frontend
 - Mobile
 - Files
@@ -97,6 +99,7 @@ Backend validates and processes data.
 ## 7. Database = Another Continent
 
 Database:
+
 - Separate system
 - Independent failures
 - Needs careful handling
@@ -115,6 +118,7 @@ GET /about → aboutController()
 ## 9. Backend Responsibilities
 
 Backend handles:
+
 1. Data
 2. Files
 3. Third-party APIs
@@ -149,16 +153,19 @@ npm install express
 ```js
 const express = require("express");
 ```
+
 Imports Express.
 
 ```js
 const app = express();
 ```
+
 Creates server instance.
 
 ```js
 const port = 3000;
 ```
+
 Temporary port.
 
 ```js
@@ -166,6 +173,7 @@ app.get("/", (req, res) => {
   res.send("Hello World");
 });
 ```
+
 Route handling.
 
 ```js
@@ -173,6 +181,7 @@ app.listen(port, () => {
   console.log("Server running");
 });
 ```
+
 Starts listening.
 
 ---
@@ -180,9 +189,11 @@ Starts listening.
 ## 13. Hot Reloading
 
 Normal reload:
+
 - Stop and start server manually
 
 Hot reload:
+
 - Auto restart on code change
 - Use nodemon
 - Development only
@@ -199,16 +210,19 @@ Hot reload:
 ## 15. dotenv
 
 Install:
+
 ```bash
 npm install dotenv
 ```
 
 .env file:
+
 ```env
 PORT=3000
 ```
 
 Usage:
+
 ```js
 require("dotenv").config();
 const port = process.env.PORT;
@@ -235,6 +249,7 @@ src/
 ## 17. Final Takeaway
 
 Backend engineering focuses on:
+
 - Logic
 - Data
 - Security
