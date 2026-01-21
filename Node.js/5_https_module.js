@@ -1,8 +1,6 @@
 const https = require("https");
 const fs = require("fs");
-const path = require("path");
 
-const filePath = path.join(__dirname, "data.txt");
 
 // File paths
 const keyPath = path.join(__dirname, "server.key");
