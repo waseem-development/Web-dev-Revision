@@ -1,6 +1,7 @@
 {
   "name": "routingpractice",
   "version": "1.0.0",
+  "type": "module",
   "description": "Practicing Routing in Express.js",
   "main": "app.js",
   "scripts": {
