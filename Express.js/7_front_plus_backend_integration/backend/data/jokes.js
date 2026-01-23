@@ -29,3 +29,6 @@ const jokes = [
       "Why did the AI go to school? Because it wanted to improve its neural networks.",
   },
 ];
+
+
+export default jokes;

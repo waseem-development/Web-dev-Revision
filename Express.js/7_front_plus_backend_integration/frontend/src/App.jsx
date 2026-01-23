@@ -7,15 +7,15 @@ function App() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:3000/jokes")
+      .get("/api/jokes")
       .then((response) => {
-        console.log(response.data);
-        setJokes(response.data.jokes); 
+        console.log(response.data); // check what comes back
+        setJokes(response.data.jokes);
       })
       .catch((error) => {
         console.error(error);
       });
-  }, []);
+  }, []); // <- run once
 
   return (
     <>
@@ -23,8 +23,8 @@ function App() {
       <p>JOKES: {jokes.length}</p>
       {jokes.map((joke, index) => (
         <div key={index}>
-          <h3>{joke.title || `Joke ${index + 1}`}</h3>
-          <p>{joke.content || joke}</p>
+          <h3>{joke.title ?? `Joke ${index + 1}`}</h3>
+          <p>{joke.content ?? joke}</p>
         </div>
       ))}
     </>
