@@ -1,4 +1,4 @@
-# TypeScript Compilation Pipeline (Detailed)
+# TypeScript Compilation Pipeline
 
 When you write **TypeScript code**, it does not run directly. It goes through several stages before becoming JavaScript that the browser or Node.js can execute.
 
