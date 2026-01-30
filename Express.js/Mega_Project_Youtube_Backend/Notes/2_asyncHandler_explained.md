@@ -1,4 +1,3 @@
-
 # Async Handler in Express.js — Super Detailed Guide
 
 > This document explains **what asyncHandler is**, **why it exists**, **how Express works internally**, **both syntaxes**, **use-cases**, **edge-cases**, and **real-world patterns** — in *very easy language*.
@@ -40,7 +39,7 @@ app.get("/test", async (req, res, next) => {
 });
 ```
 
-😡 Repeating this everywhere is bad.
+Repeating this everywhere is bad.
 
 ---
 
@@ -154,12 +153,12 @@ const asyncHandler = (fn) => async (req, res, next) => {
 
 ### What’s different?
 
-| Feature | Version 1 | Version 2 |
-|------|---------|----------|
-| Error handling | Central | Local |
-| Scalability | ⭐⭐⭐⭐⭐ | ⭐⭐ |
-| Used in industry | ✅ | ❌ |
-| Custom status codes | Better | Limited |
+| Feature             | Version 1  | Version 2 |
+| ------------------- | ---------- | --------- |
+| Error handling      | Central    | Local     |
+| Scalability         | ⭐⭐⭐⭐⭐ | ⭐⭐      |
+| Used in industry    | ✅         | ❌        |
+| Custom status codes | Better     | Limited   |
 
 ⚠️ Version 2 breaks **centralized error handling**.
 
@@ -310,10 +309,10 @@ Response
 
 ## 15. Final Verdict
 
-✔ Clean code  
-✔ Safe async  
-✔ Central errors  
-✔ Industry standard  
+✔ Clean code
+✔ Safe async
+✔ Central errors
+✔ Industry standard
 
 ---
 
