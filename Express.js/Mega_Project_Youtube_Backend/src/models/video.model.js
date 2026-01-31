@@ -1,5 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
-import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2"
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 const videoSchema = Schema(
   {
     videoFile: {
@@ -25,19 +25,23 @@ const videoSchema = Schema(
     views: {
       type: Number,
       default: 0,
+      min: 0,
     },
-    isPublished: {
-      type: Boolean,
-      default: true,
+    status: {
+      type: String,
+      enum: ["DRAFT", "PUBLISHED", "PRIVATE"],
+      default: "DRAFT",
     },
+      isDeleted: { type: Boolean, default: false },
     owner: {
       type: Schema.Types.ObjectId,
       required: true,
+      ref: "User",
+      index: true,
     },
   },
   { timestamps: true }
 );
 
-
-videoSchema.plugin(mongooseAggregatePaginate)
+videoSchema.plugin(mongooseAggregatePaginate);
 export const Video = model("Video", videoSchema);
