@@ -2,7 +2,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
-import uploadOnCloudinary from "../utils/cloudinary.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -16,6 +16,25 @@ const registerUser = asyncHandler(async (req, res) => {
   // Check for user creation
   // Return response
 
+    // DEBUG: Log everything
+  console.log("=== REGISTER USER DEBUG ===");
+  console.log("1. req.body:", JSON.stringify(req.body));
+  console.log("2. req.files:", JSON.stringify(req.files));
+  console.log("3. req.file:", JSON.stringify(req.file));
+  console.log("4. Type of req.files:", typeof req.files);
+  
+  if (req.files) {
+    console.log("5. req.files keys:", Object.keys(req.files));
+    console.log("6. req.files.avatar:", req.files.avatar);
+    console.log("7. Is avatar array?", Array.isArray(req.files.avatar));
+    
+    if (req.files.avatar && Array.isArray(req.files.avatar)) {
+      console.log("8. avatar[0]:", req.files.avatar[0]);
+      console.log("9. avatar[0].path:", req.files.avatar[0]?.path);
+      console.log("10. avatar[0].fieldname:", req.files.avatar[0]?.fieldname);
+    }
+  }
+  
   const { fullName, email, username, password } = req.body;
   console.log(`fullName: ${fullName}`);
   console.log(`email: ${email}`);

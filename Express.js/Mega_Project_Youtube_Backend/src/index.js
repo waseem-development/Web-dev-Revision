@@ -1,9 +1,14 @@
 // src/index.js
 import dotenv from "dotenv";
-dotenv.config();
+import path from "path"; 
+
+dotenv.config({ path: path.resolve("./.env") }); // now path.resolve works
+
 import connectDB from "./db/index.js";
-import {app} from "./app.js";
+import { app } from "./app.js";
+
 export const PORT = process.env.PORT;
+
 connectDB()
   .then(() => {
     app.on("error", (err) => {
@@ -12,6 +17,9 @@ connectDB()
     });
     app.listen(PORT || 8000, () => {
       console.log(`Server is running at ${PORT}`);
+      console.log("Cloudinary Key:", process.env.CLOUDINARY_API_KEY);
+      console.log("Cloudinary Secret:", process.env.CLOUDINARY_API_SECRET);
+      console.log("Cloudinary Name:", process.env.CLOUDINARY_CLOUD_NAME);
     });
   })
   .catch((err) => {

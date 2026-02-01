@@ -1,7 +1,8 @@
-import mongoose, { Schema, model } from "mongoose";
+// src/models/user.model.js
+import mongoose from "mongoose";
 import jwt from "jsonwebtoken"; // JWT = JSON Web Token for authentication
 import bcrypt from "bcrypt"; // bcrypt = secure password hashing library
-
+const { Schema } = mongoose;
 // ================================================================
 // NOTES (Industry / Interview perspective):
 //
@@ -32,15 +33,21 @@ import bcrypt from "bcrypt"; // bcrypt = secure password hashing library
 // - instance methods: add functions to model instances, e.g., checking password, generating JWT
 // ================================================================
 
-const userSchema = Schema(
+const userSchema = new Schema(
   {
     username: {
       type: String,
       unique: true, // DB enforces uniqueness
       required: [true, "Username is required"], // validation
       lowercase: true, // normalize input: Waseem → waseem
-      trim: true,      // remove extra spaces
-      index: true,     // add DB index for faster search & queries
+      trim: true, // remove extra spaces
+      index: true, // add DB index for faster search & queries
+    },
+    email: {
+      type: String,
+      required: [true, "email is required"],
+      trim: true,
+      index: true,
     },
     fullName: {
       type: String,
@@ -56,11 +63,13 @@ const userSchema = Schema(
     },
     avatar: {
       type: String,
-      default: "../../public/default-avatar.webp", // default image for new users
     },
     coverImage: {
       type: String,
       default: "../../public/coverImage.png", // default cover image
+    },
+    refreshToken: {
+      type: String,
     },
     watchHistory: {
       type: Schema.Types.ObjectId,
@@ -79,10 +88,12 @@ userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
   try {
-    this.password = await bcrypt.hash(this.password, 10); // 10 salt rounds (industry standard)
-    next(); // continue saving
-  } catch (err) {
-    next(err); // pass errors to Mongoose error handler
+    // Use bcrypt.hash with explicit await
+    const hashedPassword = await bcrypt.hash(this.password, 10);
+    this.password = hashedPassword;
+    next();
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -97,18 +108,17 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 // ==========================================
 // Instance method: generate access token (JWT)
 // ==========================================
-userSchema.methods.generateAccessToken = async function () {
-  // Payload: minimal info needed to identify user
-  // Avoid putting sensitive info in JWT
+userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
       _id: this._id,
+      email: this.email,
       username: this.username,
       fullName: this.fullName,
     },
-    process.env.ACCESS_TOKEN_SECRET, // secret key stored in .env
+    process.env.ACCESS_TOKEN_SECRET,
     {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRY, // e.g., 1d
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1d",
     }
   );
 };
@@ -116,16 +126,14 @@ userSchema.methods.generateAccessToken = async function () {
 // ==========================================
 // Instance method: generate refresh token (JWT)
 // ==========================================
-userSchema.methods.generateRefreshToken = async function () {
+userSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
     {
       _id: this._id,
-      username: this.username,
-      fullName: this.fullName,
     },
-    process.env.REFRESH_TOKEN_SECRET, // secret key for refresh tokensw & sa
+    process.env.REFRESH_TOKEN_SECRET,
     {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRY, // e.g., 10d
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRY || "10d",
     }
   );
 };
@@ -133,8 +141,8 @@ userSchema.methods.generateRefreshToken = async function () {
 // ==========================================
 // Export the User model
 // ==========================================
-export const User = model("User", userSchema);
-
+const User = mongoose.model("User", userSchema);
+export { User };
 /*
 INTERVIEW PERSPECTIVE:
 
