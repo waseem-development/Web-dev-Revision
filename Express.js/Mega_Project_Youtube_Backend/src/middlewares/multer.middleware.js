@@ -11,7 +11,6 @@ const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     // Use absolute path
     const destinationPath = path.join(__dirname, '../../public/temp');
-    console.log("Multer saving to:", destinationPath);
     cb(null, destinationPath);
   },
   filename: function (req, file, cb) {

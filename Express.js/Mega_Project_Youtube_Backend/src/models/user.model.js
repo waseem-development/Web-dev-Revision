@@ -1,51 +1,25 @@
-// src/models/user.model.js
+// src/models/user.model.js - FINAL WORKING VERSION
 import mongoose from "mongoose";
-import jwt from "jsonwebtoken"; // JWT = JSON Web Token for authentication
-import bcrypt from "bcrypt"; // bcrypt = secure password hashing library
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
+
 const { Schema } = mongoose;
-// ================================================================
-// NOTES (Industry / Interview perspective):
-//
-// JWT (jsonwebtoken):
-// - Standard for user authentication & API tokens.
-// - Stateless: No server-side session storage needed; all info in token.
-// - Structure: Header, Payload (claims), Signature.
-// - Sent in Authorization header as Bearer token: `Authorization: Bearer <token>`
-// - Common interview points:
-//     * JWT vs session cookies: JWT is stateless, cookies often server-stored
-//     * Secure usage: Always use strong secrets, set expiration, consider refresh tokens
-//     * Pros: Scales easily, no server session store needed
-//     * Cons: Cannot easily revoke without extra mechanisms
-//
-// bcrypt:
-// - Library to hash passwords before storing in DB
-// - Automatically adds salt to protect against rainbow table attacks
-// - Methods:
-//     * bcrypt.hash(plaintext, saltRounds) → generates hash
-//     * bcrypt.compare(plaintext, hash) → checks password
-// - Common interview points:
-//     * Never store plaintext passwords
-//     * Salt rounds increase security but cost CPU time
-//     * Alternatives: bcryptjs, scrypt, argon2 (argon2 is currently considered most secure)
-//
-// Mongoose Model Concepts:
-// - pre("save") middleware: run logic before saving document (e.g., hashing passwords)
-// - instance methods: add functions to model instances, e.g., checking password, generating JWT
-// ================================================================
 
 const userSchema = new Schema(
   {
     username: {
       type: String,
-      unique: true, // DB enforces uniqueness
-      required: [true, "Username is required"], // validation
-      lowercase: true, // normalize input: Waseem → waseem
-      trim: true, // remove extra spaces
-      index: true, // add DB index for faster search & queries
+      required: [true, "Username is required"],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true,
     },
     email: {
       type: String,
-      required: [true, "email is required"],
+      required: [true, "Email is required"],
+      unique: true,
+      lowercase: true,
       trim: true,
       index: true,
     },
@@ -53,60 +27,59 @@ const userSchema = new Schema(
       type: String,
       required: [true, "Full name is required"],
       trim: true,
-      index: true, // indexing for fast searches
+      index: true,
     },
     password: {
       type: String,
       required: [true, "Password is required"],
-      trim: true,
-      // Note: do NOT set minlength here if hashing in pre-save, enforce in validation/controller
     },
     avatar: {
       type: String,
+      required: true,
     },
     coverImage: {
       type: String,
-      default: "../../public/coverImage.png", // default cover image
     },
     refreshToken: {
       type: String,
     },
-    watchHistory: {
-      type: Schema.Types.ObjectId,
-      ref: "Video", // reference Video collection for population
-    },
+    watchHistory: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Video",
+      },
+    ],
   },
-  { timestamps: true } // Mongoose automatically adds createdAt & updatedAt
+  { timestamps: true }
 );
 
 // ==========================================
-// Pre-save middleware: hash password before saving
+// PRE-SAVE HOOK - MONGOOSE v9 COMPATIBLE
 // ==========================================
-userSchema.pre("save", async function (next) {
-  // 'this' = the document being saved
-  // Only hash if password field is new or modified
-  if (!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+  // 1. Only hash if password is modified
+  if (!this.isModified("password")) return;
 
   try {
-    // Use bcrypt.hash with explicit await
-    const hashedPassword = await bcrypt.hash(this.password, 10);
-    this.password = hashedPassword;
-    next();
+    // 2. Hash the password
+    this.password = await bcrypt.hash(this.password, 10);
+    // No next() or next.next() needed in Mongoose 9!
   } catch (error) {
-    next(error);
+    // 3. Throw errors to prevent saving if hashing fails
+    throw error;
   }
 });
 
+
 // ==========================================
-// Instance method: compare plaintext password with hashed
+// Instance method: compare password
 // ==========================================
 userSchema.methods.isPasswordCorrect = async function (password) {
-  // 'this.password' = hashed password from DB
   return await bcrypt.compare(password, this.password);
 };
 
 // ==========================================
-// Instance method: generate access token (JWT)
+// Instance method: generate access token
 // ==========================================
 userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
@@ -124,7 +97,7 @@ userSchema.methods.generateAccessToken = function () {
 };
 
 // ==========================================
-// Instance method: generate refresh token (JWT)
+// Instance method: generate refresh token
 // ==========================================
 userSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
@@ -141,33 +114,4 @@ userSchema.methods.generateRefreshToken = function () {
 // ==========================================
 // Export the User model
 // ==========================================
-const User = mongoose.model("User", userSchema);
-export { User };
-/*
-INTERVIEW PERSPECTIVE:
-
-1. Why use bcrypt instead of plain SHA256/MD5?
-   - bcrypt is slow & salted → prevents brute-force/rainbow table attacks
-   - MD5/SHA256 are fast → easier to brute force
-   - Industry standard for passwords
-
-2. Why pre("save") middleware instead of hashing in controller?
-   - Centralized hashing logic
-   - Prevents forgetting to hash in some controller
-   - Keeps controllers clean
-
-3. Why instance methods like isPasswordCorrect?
-   - Encapsulate behavior in the model (OOP principle)
-   - Cleaner, easier to maintain
-
-4. JWT considerations:
-   - Always sign with secret
-   - Expire tokens to limit risk
-   - Do NOT store sensitive info (like password)
-   - Use refresh tokens for longer sessions
-   - Verify tokens in middleware
-
-5. Next() in pre-save:
-   - Calls next middleware or continues saving
-   - If error occurs, pass error via next(err)
-*/
+export const User = mongoose.model("User", userSchema);

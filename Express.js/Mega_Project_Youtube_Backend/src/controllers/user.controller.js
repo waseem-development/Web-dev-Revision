@@ -1,4 +1,4 @@
-// src/controllers/user.controller.js
+// src/controllers/user.controller.js - CLEAN VERSION WITH ALGORITHM COMMENTS
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
@@ -6,42 +6,12 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
 
 const registerUser = asyncHandler(async (req, res) => {
-  // Get user details from frontend
-  // validation: not empty
-  // Check if user exists (username and email)
-  // Check for images if they exist. Check Avatar
-  // Upload them to cloudinary
-  // Create user object - create entry in DB
-  // Remove password and refresh token fields from response
-  // Check for user creation
-  // Return response
-
-    // DEBUG: Log everything
-  console.log("=== REGISTER USER DEBUG ===");
-  console.log("1. req.body:", JSON.stringify(req.body));
-  console.log("2. req.files:", JSON.stringify(req.files));
-  console.log("3. req.file:", JSON.stringify(req.file));
-  console.log("4. Type of req.files:", typeof req.files);
+  // ALGORITHM: User Registration Flow
   
-  if (req.files) {
-    console.log("5. req.files keys:", Object.keys(req.files));
-    console.log("6. req.files.avatar:", req.files.avatar);
-    console.log("7. Is avatar array?", Array.isArray(req.files.avatar));
-    
-    if (req.files.avatar && Array.isArray(req.files.avatar)) {
-      console.log("8. avatar[0]:", req.files.avatar[0]);
-      console.log("9. avatar[0].path:", req.files.avatar[0]?.path);
-      console.log("10. avatar[0].fieldname:", req.files.avatar[0]?.fieldname);
-    }
-  }
-  
+  // Step 1: Extract user data from request body
   const { fullName, email, username, password } = req.body;
-  console.log(`fullName: ${fullName}`);
-  console.log(`email: ${email}`);
-  console.log(`username: ${username}`);
-  console.log(`password: ${password}`);
 
-  // Validate required fields
+  // Step 2: Validate that all required fields are present and not empty
   const fields = { fullName, email, username, password };
   const emptyField = Object.entries(fields).find(
     ([key, value]) => !value || value.trim() === ""
@@ -51,7 +21,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new apiError(400, `${field} is required`);
   }
 
-  // Check if username or email already exists
+  // Step 3: Check if user already exists in database (by username or email)
   const existedUser = await User.findOne({
     $or: [{ username }, { email }],
   });
@@ -60,45 +30,64 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new apiError(409, "Username or email already exists");
   }
 
-  // Check for uploaded avatar and cover images
+  // Step 4: Get file paths from uploaded files (avatar and cover image)
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
   const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 
+  // Step 5: Validate that avatar file is uploaded (avatar is required)
   if (!avatarLocalPath) {
     throw new apiError(400, "Avatar file is required");
   }
 
-  // Upload images to Cloudinary
+  // Step 6: Upload avatar image to Cloudinary storage service
   const avatar = await uploadOnCloudinary(avatarLocalPath);
+  
+  // Step 7: Upload cover image to Cloudinary (optional - upload if exists)
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
+  // Step 8: Verify avatar uploaded successfully to Cloudinary
   if (!avatar) {
     throw new apiError(400, "Avatar file is required");
   }
 
-  // Create user in DB
+  // Step 9: Create new user document in MongoDB database
   const user = await User.create({
     fullName,
-    avatar: avatar.url,
-    coverImage: coverImage?.url || "",
+    avatar: avatar.url,          // Store Cloudinary URL for avatar
+    coverImage: coverImage?.url || "", // Store Cloudinary URL for cover image (empty if none)
     email,
-    password,
-    username: username.toLowerCase(),
+    password,                    // Password will be hashed by pre-save hook in User model
+    username: username.toLowerCase(), // Store username in lowercase for consistency
   });
 
-  // Remove sensitive fields from response
+  // Step 10: Retrieve created user from database, excluding sensitive fields
   const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken"
+    "-password -refreshToken"    // Don't send password or refresh token in response
   );
 
+  // Step 11: Verify user was created successfully in database
   if (!createdUser) {
     throw new apiError(500, "Something went wrong while registering the user");
   }
 
-  // Return success response
+  // Step 12: Return success response with created user data (201 Created status)
   return res
     .status(201)
     .json(new apiResponse(201, createdUser, "User registered successfully"));
 });
 
 export { registerUser };
+
+// ALGORITHM SUMMARY:
+// 1. Extract user data from request
+// 2. Validate all required fields are present
+// 3. Check for duplicate username/email in database
+// 4. Get uploaded file paths
+// 5. Validate avatar file exists
+// 6. Upload avatar to Cloudinary
+// 7. Upload cover image to Cloudinary (optional)
+// 8. Verify avatar upload succeeded
+// 9. Create user in database (password auto-hashed by pre-save hook)
+// 10. Retrieve user without sensitive data
+// 11. Verify user creation
+// 12. Return success response with user data
