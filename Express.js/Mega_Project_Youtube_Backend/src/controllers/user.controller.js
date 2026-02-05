@@ -4,10 +4,29 @@ import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
+import { Http2ServerResponse } from "http2";
+
+const generateAccessAndRefreshToken = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new apiError(
+      500,
+      "Something went wrong while generating refresh and access token"
+    );
+  }
+};
 
 const registerUser = asyncHandler(async (req, res) => {
   // ALGORITHM: User Registration Flow
-  
+
   // Step 1: Extract user data from request body
   const { fullName, email, username, password } = req.body;
 
@@ -41,7 +60,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   // Step 6: Upload avatar image to Cloudinary storage service
   const avatar = await uploadOnCloudinary(avatarLocalPath);
-  
+
   // Step 7: Upload cover image to Cloudinary (optional - upload if exists)
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
@@ -53,16 +72,16 @@ const registerUser = asyncHandler(async (req, res) => {
   // Step 9: Create new user document in MongoDB database
   const user = await User.create({
     fullName,
-    avatar: avatar.url,          // Store Cloudinary URL for avatar
+    avatar: avatar.url, // Store Cloudinary URL for avatar
     coverImage: coverImage?.url || "", // Store Cloudinary URL for cover image (empty if none)
     email,
-    password,                    // Password will be hashed by pre-save hook in User model
+    password, // Password will be hashed by pre-save hook in User model
     username: username.toLowerCase(), // Store username in lowercase for consistency
   });
 
   // Step 10: Retrieve created user from database, excluding sensitive fields
   const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken"    // Don't send password or refresh token in response
+    "-password -refreshToken" // Don't send password or refresh token in response
   );
 
   // Step 11: Verify user was created successfully in database
@@ -76,7 +95,87 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new apiResponse(201, createdUser, "User registered successfully"));
 });
 
-export { registerUser };
+const loginUser = asyncHandler(async (req, res) => {
+  // Algorithm
+  /* 
+      1 ==> fetch data from req.body
+      2 ==> user or email
+      3 ==> find the user
+      4 ==> password check
+      5 ==> generate access and refresh token
+      6 ==> send secure cookies
+    */
+
+  const { username, email, password } = req.body();
+  if (!username || !email) {
+    throw new apiError(400, "username or password is required");
+  }
+
+  const user = await User.findOne({
+    $or: [{ username }, { password }],
+  });
+
+  if (!user) {
+    throw new apiError(404, "User does not exist");
+  }
+
+  const isPasswordValid = await user.isPasswordCorrect(password);
+
+  if (!isPasswordValid) {
+    throw new apiError(401, "Invalid Credentials");
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+    user._id
+  );
+
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new apiResponse(200, {
+        user: loggedInUser,
+        accessToken,
+        refreshToken,
+        message: "User logged In Successfully",
+      })
+    );
+});
+
+const logoutUser = asyncHandler(async (req, res) => {
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new apiResponse(200, "User logged out successfully"));
+});
+export { registerUser, loginUser, logoutUser };
 
 // ALGORITHM SUMMARY:
 // 1. Extract user data from request
