@@ -4,7 +4,6 @@ import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
-import { Http2ServerResponse } from "http2";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -107,7 +106,7 @@ const loginUser = asyncHandler(async (req, res) => {
     */
 
   const { username, email, password } = req.body();
-  if (!username || !email) {
+  if (!(username || email)) {
     throw new apiError(400, "username or password is required");
   }
 
