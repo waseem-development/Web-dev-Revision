@@ -165,102 +165,106 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  // ==========================================
-  // STEP 1: EXTRACT CREDENTIALS FROM REQUEST
-  // ==========================================
-  const { username, email, password } = req.body;
-
-  // ==========================================
-  // STEP 2: VALIDATE REQUIRED FIELDS
-  // ==========================================
-  if ((!username && !email) || !password) {
-    throw new apiError(400, "Username/email and password are required");
-  }
-
-  // ==========================================
-  // STEP 3: FIND USER BY USERNAME OR EMAIL
-  // ==========================================
-  const user = await User.findOne({
-    $or: [{ username }, { email }],
-  });
-
-  if (!user) {
-    throw new apiError(404, "User does not exist");
-  }
-
-  // ==========================================
-  // STEP 4: VERIFY PASSWORD USING INSTANCE METHOD
-  // ==========================================
-  const isPasswordValid = await user.isPasswordCorrect(password);
-  if (!isPasswordValid) {
-    throw new apiError(401, "Invalid Credentials");
-  }
-
-  // ==========================================
-  // STEP 5: GENERATE ACCESS & REFRESH TOKENS
-  // ==========================================
-  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
-    user._id
-  );
-
-  // ==========================================
-  // STEP 6: GET USER WITHOUT SENSITIVE FIELDS
-  // ==========================================
-  const loggedInUser = await User.findById(user._id).select(
-    "-password -refreshToken"
-  );
-
-  // ==========================================
-  // STEP 7: SET COOKIE OPTIONS (SECURE)
-  // ==========================================
-  const options = {
-    httpOnly: true, // Prevents XSS attacks - JS cannot access cookie
-    secure: true, // Only send over HTTPS
-  };
-
-  // ==========================================
-  // STEP 8: SEND RESPONSE WITH COOKIES AND DATA
-  // ==========================================
-  return res
-    .status(200)
-    .cookie("accessToken", accessToken, options) // Set access token cookie
-    .cookie("refreshToken", refreshToken, options) // Set refresh token cookie
-    .json(
-      new apiResponse(200, {
-        user: loggedInUser,
-        accessToken, // Also send in body for mobile apps
-        refreshToken, // Also send in body for mobile apps
-        message: "User logged In Successfully",
-      })
+  try {
+    // ==========================================
+    // STEP 1: EXTRACT CREDENTIALS FROM REQUEST
+    // ==========================================
+    const { username, email, password } = req.body;
+  
+    // ==========================================
+    // STEP 2: VALIDATE REQUIRED FIELDS
+    // ==========================================
+    if (!password) throw new apiError(400, "Password is required");
+    if (!username && !email)
+      throw new apiError(400, "Username or email is required");
+  
+    // ==========================================
+    // STEP 3: FIND USER BY USERNAME OR EMAIL
+    // ==========================================
+    const user = await User.findOne({
+      $or: [{ username }, { email }],
+    });
+  
+    if (!user) {
+      throw new apiError(404, "User does not exist");
+    }
+  
+    // ==========================================
+    // STEP 4: VERIFY PASSWORD USING INSTANCE METHOD
+    // ==========================================
+    const isPasswordValid = await user.isPasswordCorrect(password);
+    if (!isPasswordValid) {
+      throw new apiError(401, "Invalid Credentials");
+    }
+  
+    // ==========================================
+    // STEP 5: GENERATE ACCESS & REFRESH TOKENS
+    // ==========================================
+    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+      user._id
     );
-
-  // ==========================================
-  // COMPLETE LOGIN FLOW SUMMARY:
-  // ==========================================
-  /*
-  🔐 REQUEST → Controller receives credentials
   
-  1️⃣ Client sends: { email: "user@example.com", password: "123456" }
+    // ==========================================
+    // STEP 6: GET USER WITHOUT SENSITIVE FIELDS
+    // ==========================================
+    const loggedInUser = await User.findById(user._id).select(
+      "-password -refreshToken"
+    );
   
-  2️⃣ Database query: Find user by email/username
+    // ==========================================
+    // STEP 7: SET COOKIE OPTIONS (SECURE)
+    // ==========================================
+    const options = {
+      httpOnly: true, // Prevents XSS attacks - JS cannot access cookie
+      secure: true, // Only send over HTTPS
+    };
   
-  3️⃣ Password verification: 
-     - bcrypt.compare(plainPassword, hashedPassword)
-     - Returns true/false
+    // ==========================================
+    // STEP 8: SEND RESPONSE WITH COOKIES AND DATA
+    // ==========================================
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options) // Set access token cookie
+      .cookie("refreshToken", refreshToken, options) // Set refresh token cookie
+      .json(
+        new apiResponse(200, {
+          user: loggedInUser,
+          accessToken, // Also send in body for mobile apps
+          refreshToken, // Also send in body for mobile apps
+          message: "User logged In Successfully",
+        })
+      );
   
-  4️⃣ Token Generation:
-     - generateAccessToken(): JWT with user data, expires 1d
-     - generateRefreshToken(): JWT with only userId, expires 10d
-  
-  5️⃣ Database Update:
-     - Store refreshToken in user document
-  
-  6️⃣ Response:
-     - Set HTTP-only cookies with both tokens
-     - Send user data + tokens in body
-  
-  🎯 FINAL: User is authenticated, tokens stored in cookies + DB
-  */
+    // ==========================================
+    // COMPLETE LOGIN FLOW SUMMARY:
+    // ==========================================
+    /*
+    🔐 REQUEST → Controller receives credentials
+    
+    1️⃣ Client sends: { email: "user@example.com", password: "123456" }
+    
+    2️⃣ Database query: Find user by email/username
+    
+    3️⃣ Password verification: 
+       - bcrypt.compare(plainPassword, hashedPassword)
+       - Returns true/false
+    
+    4️⃣ Token Generation:
+       - generateAccessToken(): JWT with user data, expires 1d
+       - generateRefreshToken(): JWT with only userId, expires 10d
+    
+    5️⃣ Database Update:
+       - Store refreshToken in user document
+    
+    6️⃣ Response:
+       - Set HTTP-only cookies with both tokens
+       - Send user data + tokens in body
+    
+    🎯 FINAL: User is authenticated, tokens stored in cookies + DB
+    */
+  } catch (error) {
+    throw new apiError(500, "Something went wrong while signing in");
+  }
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
