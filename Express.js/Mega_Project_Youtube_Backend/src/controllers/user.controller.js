@@ -170,25 +170,25 @@ const loginUser = asyncHandler(async (req, res) => {
     // STEP 1: EXTRACT CREDENTIALS FROM REQUEST
     // ==========================================
     const { username, email, password } = req.body;
-  
+
     // ==========================================
     // STEP 2: VALIDATE REQUIRED FIELDS
     // ==========================================
     if (!password) throw new apiError(400, "Password is required");
     if (!username && !email)
       throw new apiError(400, "Username or email is required");
-  
+
     // ==========================================
     // STEP 3: FIND USER BY USERNAME OR EMAIL
     // ==========================================
     const user = await User.findOne({
       $or: [{ username }, { email }],
     });
-  
+
     if (!user) {
       throw new apiError(404, "User does not exist");
     }
-  
+
     // ==========================================
     // STEP 4: VERIFY PASSWORD USING INSTANCE METHOD
     // ==========================================
@@ -196,21 +196,21 @@ const loginUser = asyncHandler(async (req, res) => {
     if (!isPasswordValid) {
       throw new apiError(401, "Invalid Credentials");
     }
-  
+
     // ==========================================
     // STEP 5: GENERATE ACCESS & REFRESH TOKENS
     // ==========================================
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
       user._id
     );
-  
+
     // ==========================================
     // STEP 6: GET USER WITHOUT SENSITIVE FIELDS
     // ==========================================
     const loggedInUser = await User.findById(user._id).select(
       "-password -refreshToken"
     );
-  
+
     // ==========================================
     // STEP 7: SET COOKIE OPTIONS (SECURE)
     // ==========================================
@@ -218,7 +218,7 @@ const loginUser = asyncHandler(async (req, res) => {
       httpOnly: true, // Prevents XSS attacks - JS cannot access cookie
       secure: true, // Only send over HTTPS
     };
-  
+
     // ==========================================
     // STEP 8: SEND RESPONSE WITH COOKIES AND DATA
     // ==========================================
@@ -234,7 +234,7 @@ const loginUser = asyncHandler(async (req, res) => {
           message: "User logged In Successfully",
         })
       );
-  
+
     // ==========================================
     // COMPLETE LOGIN FLOW SUMMARY:
     // ==========================================
@@ -322,13 +322,14 @@ const logoutUser = asyncHandler(async (req, res) => {
   */
 });
 
-const refresshAccessToken = asyncHandler(async (req, res) => {
+const refreshAccessToken = asyncHandler(async (req, res) => {
   try {
     // ==========================================
     // STEP 1: GET REFRESH TOKEN FROM COOKIE OR BODY
     // ==========================================
     const incomingRefreshToken =
-      req.cookies?.refreshToken || req.body.refreshToken;
+      req.cookies?.refreshToken /* For web apps */ ||
+      req.body.refreshToken; /* For mobile apps */
 
     if (!incomingRefreshToken) {
       throw new apiError(401, "Unauthorized Request");
@@ -337,11 +338,16 @@ const refresshAccessToken = asyncHandler(async (req, res) => {
     // ==========================================
     // STEP 2: VERIFY REFRESH TOKEN
     // ==========================================
-    // FIX BUG: Should use REFRESH_TOKEN_SECRET, not ACCESS_TOKEN_SECRET
     const decodedToken = jwt.verify(
       incomingRefreshToken,
-      process.env.REFRESH_TOKEN_SECRET // 🔴 FIXED: Was ACCESS_TOKEN_SECRET
+      process.env.REFRESH_TOKEN_SECRET
     );
+    // Output: Trustworthy decoded data
+    // decodedToken = {
+    //   _id: "67a1b2c3d4e5f6a7b8c9d0e1",  // Customer ID: 12345
+    //   iat: 1746240000,                  // Purchased: Feb 12
+    //   exp: 1747104000                  // Expires: Feb 21
+    // }
 
     // ==========================================
     // STEP 3: FIND USER FROM DECODED TOKEN
@@ -377,7 +383,7 @@ const refresshAccessToken = asyncHandler(async (req, res) => {
     // ==========================================
     return res
       .status(200)
-      .cookie("accessToken", accessToken, options) // FIXED: was "accesshToken"
+      .cookie("accessToken", accessToken, options)
       .cookie("refreshToken", newRefreshToken, options)
       .json(
         new apiResponse(
@@ -418,4 +424,15 @@ const refresshAccessToken = asyncHandler(async (req, res) => {
   */
 });
 
-export { registerUser, loginUser, logoutUser, refresshAccessToken };
+export { registerUser, loginUser, logoutUser, refreshAccessToken };
+
+// JWT = 3 PARTS = HEADER.PAYLOAD.SIGNATURE
+
+// 📦 HEADER    = "What kind of box?" (algorithm + type)
+// 📦 PAYLOAD   = "What's inside?" (your data + timestamps)
+// 📦 SIGNATURE = "Tamper-proof seal" (hash with secret)
+
+// VERIFY = Bouncer checking:
+// 1. Is seal intact? (signature valid)
+// 2. Is milk expired? (not expired)
+// 3. Is this YOUR ID? (payload data)
