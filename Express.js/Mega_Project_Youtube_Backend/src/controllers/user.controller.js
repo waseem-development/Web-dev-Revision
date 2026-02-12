@@ -4,6 +4,7 @@ import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
+import { access } from "fs";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -105,13 +106,15 @@ const loginUser = asyncHandler(async (req, res) => {
       6 ==> send secure cookies
     */
 
-  const { username, email, password } = req.body();
-  if (!(username || email)) {
-    throw new apiError(400, "username or password is required");
+  const { username, email, password } = req.body;
+
+  // Check if required fields are present
+  if ((!username && !email) || !password) {
+    throw new apiError(400, "Username/email and password are required");
   }
 
   const user = await User.findOne({
-    $or: [{ username }, { password }],
+    $or: [{ username }, { email }],
   });
 
   if (!user) {
@@ -174,7 +177,57 @@ const logoutUser = asyncHandler(async (req, res) => {
     .clearCookie("refreshToken", options)
     .json(new apiResponse(200, "User logged out successfully"));
 });
-export { registerUser, loginUser, logoutUser };
+
+const refresshAccessToken = asyncHandler(async (req, res) => {
+  try {
+    const incomingRefreshToken =
+      (await req.cookies.refreshToken) || req.body.refreshToken;
+
+    if (!incomingRefreshToken) {
+      throw new apiError(401, "Unauthorized Request");
+    }
+
+    const decodedToken = await jwt.verify(
+      incomingRefreshToken,
+      process.env.ACCESS_TOKEN_SECRET
+    );
+
+    const user = await User.findById(decodedToken?._id);
+    if (!user) {
+      throw new apiError(401, "Invalid Refresh Token");
+    }
+
+    if (incomingRefreshToken !== user?.refreshToken) {
+      throw new apiError(401, "Refresh Token is expired or used");
+    }
+
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+
+    const { accessToken, newRefreshToken } =
+      await generateAccessAndRefreshToken(user._id);
+    return res
+      .status(200)
+      .cookie("accesshToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(
+        new apiResponse(
+          200,
+          {
+            accessToken,
+            refreshToken: newRefreshToken,
+          },
+          "Access Token Refreshed"
+        )
+      );
+  } catch (error) {
+    throw new apiError(401, error?.message || "Invalid Refresh Token");
+  }
+});
+
+export { registerUser, loginUser, logoutUser, refresshAccessToken };
 
 // ALGORITHM SUMMARY:
 // 1. Extract user data from request

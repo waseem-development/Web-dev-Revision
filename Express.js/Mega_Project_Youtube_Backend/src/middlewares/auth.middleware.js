@@ -1,3 +1,4 @@
+// src/middlewares/auth.middleware.js
 import { User } from "../models/user.model.js";
 import { apiError } from "../utils/apiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
