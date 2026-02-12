@@ -1,4 +1,4 @@
-// src/routes/user.routes.js - USE THIS VERSION
+// src/routes/user.routes.js
 import express from "express";
 import {
   loginUser,
@@ -6,8 +6,8 @@ import {
   registerUser,
   refresshAccessToken
 } from "../controllers/user.controller.js";
-import { upload } from "../middlewares/multer.middleware.js";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { upload } from "../middleware/multer.middleware.js";
+import { verifyJWT } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 

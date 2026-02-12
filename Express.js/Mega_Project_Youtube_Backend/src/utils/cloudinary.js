@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs/promises";
 import dotenv from "dotenv";
+import { apiError } from "./apiError";
 
 dotenv.config();
 
@@ -31,11 +32,11 @@ const uploadOnCloudinary = async (localFilePath) => {
       try {
         await fs.unlink(localFilePath);
       } catch (unlinkError) {
-        // Silent cleanup failure
+        console.warn(`⚠️ Cleanup failed after upload error: ${localFilePath}`);
       }
     }
-    
-    return null;
+
+    return null; // Signal upload failed
   }
 };
 

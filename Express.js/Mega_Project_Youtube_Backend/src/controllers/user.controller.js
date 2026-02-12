@@ -1,20 +1,27 @@
-// src/controllers/user.controller.js - CLEAN VERSION WITH ALGORITHM COMMENTS
+// src/controllers/user.controller.js - COMPLETE ALGORITHM COMMENTS
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
-import { access } from "fs";
+import jwt from "jsonwebtoken"; // MISSING IMPORT - ADD THIS!
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
+    // 1. Find user by ID
     const user = await User.findById(userId);
+
+    // 2. Generate access token using user's instance method
     const accessToken = user.generateAccessToken();
+
+    // 3. Generate refresh token using user's instance method
     const refreshToken = user.generateRefreshToken();
 
+    // 4. Save refresh token to database
     user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
+    await user.save({ validateBeforeSave: false }); // Skip validation
 
+    // 5. Return both tokens
     return { accessToken, refreshToken };
   } catch (error) {
     throw new apiError(
@@ -25,12 +32,14 @@ const generateAccessAndRefreshToken = async (userId) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-  // ALGORITHM: User Registration Flow
-
-  // Step 1: Extract user data from request body
+  // ==========================================
+  // STEP 1: EXTRACT DATA FROM REQUEST BODY
+  // ==========================================
   const { fullName, email, username, password } = req.body;
 
-  // Step 2: Validate that all required fields are present and not empty
+  // ==========================================
+  // STEP 2: VALIDATE REQUIRED FIELDS
+  // ==========================================
   const fields = { fullName, email, username, password };
   const emptyField = Object.entries(fields).find(
     ([key, value]) => !value || value.trim() === ""
@@ -40,79 +49,137 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new apiError(400, `${field} is required`);
   }
 
-  // Step 3: Check if user already exists in database (by username or email)
+  // ==========================================
+  // STEP 3: CHECK FOR EXISTING USER
+  // ==========================================
   const existedUser = await User.findOne({
     $or: [{ username }, { email }],
   });
 
   if (existedUser) {
-    throw new apiError(409, "Username or email already exists");
+    // Determine which credential already exists
+    if (existedUser.username === username) {
+      throw new apiError(409, "Username already exists");
+    }
+    if (existedUser.email === email) {
+      throw new apiError(409, "Email already exists");
+    }
   }
 
-  // Step 4: Get file paths from uploaded files (avatar and cover image)
+  // ==========================================
+  // STEP 4: GET UPLOADED FILE PATHS FROM MULTER
+  // ==========================================
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
   const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 
-  // Step 5: Validate that avatar file is uploaded (avatar is required)
+  // ==========================================
+  // STEP 5: VALIDATE AVATAR FILE EXISTS
+  // ==========================================
   if (!avatarLocalPath) {
     throw new apiError(400, "Avatar file is required");
   }
 
-  // Step 6: Upload avatar image to Cloudinary storage service
+  // ==========================================
+  // STEP 6: UPLOAD AVATAR TO CLOUDINARY
+  // ==========================================
   const avatar = await uploadOnCloudinary(avatarLocalPath);
 
-  // Step 7: Upload cover image to Cloudinary (optional - upload if exists)
+  // ==========================================
+  // STEP 7: UPLOAD COVER IMAGE TO CLOUDINARY (OPTIONAL)
+  // ==========================================
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-  // Step 8: Verify avatar uploaded successfully to Cloudinary
+  // ==========================================
+  // STEP 8: VERIFY AVATAR UPLOAD SUCCEEDED
+  // ==========================================
   if (!avatar) {
     throw new apiError(400, "Avatar file is required");
   }
 
-  // Step 9: Create new user document in MongoDB database
+  // ==========================================
+  // STEP 9: CREATE USER IN DATABASE
+  // ==========================================
   const user = await User.create({
     fullName,
-    avatar: avatar.url, // Store Cloudinary URL for avatar
-    coverImage: coverImage?.url || "", // Store Cloudinary URL for cover image (empty if none)
+    avatar: avatar.url,
+    coverImage: coverImage?.url || "",
     email,
-    password, // Password will be hashed by pre-save hook in User model
-    username: username.toLowerCase(), // Store username in lowercase for consistency
+    password, // PRE-SAVE HOOK TRIGGERS HERE - password gets hashed
+    username: username.toLowerCase(),
   });
 
-  // Step 10: Retrieve created user from database, excluding sensitive fields
+  // ==========================================
+  // STEP 10: RETRIEVE USER WITHOUT SENSITIVE FIELDS
+  // ==========================================
   const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken" // Don't send password or refresh token in response
+    "-password -refreshToken"
   );
 
-  // Step 11: Verify user was created successfully in database
+  // ==========================================
+  // STEP 11: VERIFY USER CREATION
+  // ==========================================
   if (!createdUser) {
     throw new apiError(500, "Something went wrong while registering the user");
   }
 
-  // Step 12: Return success response with created user data (201 Created status)
+  // ==========================================
+  // STEP 12: RETURN SUCCESS RESPONSE
+  // ==========================================
   return res
     .status(201)
     .json(new apiResponse(201, createdUser, "User registered successfully"));
+
+  // ==========================================
+  // COMPLETE REGISTRATION FLOW SUMMARY:
+  // ==========================================
+  /*
+  📦 REQUEST → Multer parses files → Controller receives
+  
+  1️⃣ Client sends: 
+     - Body: { fullName, email, username, password }
+     - Files: avatar.jpg, coverImage.jpg (multipart/form-data)
+  
+  2️⃣ Validation:
+     - All fields present and non-empty
+     - Username/email not already in DB
+  
+  3️⃣ File Processing:
+     - Multer saves files temporarily on server
+     - Paths: ./public/temp/avatar-123.jpg, ./public/temp/cover-456.jpg
+  
+  4️⃣ Cloudinary Upload:
+     - Reads temp files, uploads to cloud
+     - Returns secure URLs: https://cloudinary.com/avatar.jpg
+  
+  5️⃣ Database Operation:
+     - Creates new user document
+     - pre('save') hook hashes password with bcrypt (salt rounds=10)
+     - Stores avatar URL, coverImage URL (or empty string)
+  
+  6️⃣ Response:
+     - Queries user again excluding password & refreshToken
+     - Sends 201 Created with user data
+  
+  🎯 FINAL: User exists in DB with hashed password, ready to login!
+  */
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  // Algorithm
-  /* 
-      1 ==> fetch data from req.body
-      2 ==> user or email
-      3 ==> find the user
-      4 ==> password check
-      5 ==> generate access and refresh token
-      6 ==> send secure cookies
-    */
-
+  // ==========================================
+  // STEP 1: EXTRACT CREDENTIALS FROM REQUEST
+  // ==========================================
   const { username, email, password } = req.body;
 
-  // Check if required fields are present
+  // ==========================================
+  // STEP 2: VALIDATE REQUIRED FIELDS
+  // ==========================================
   if ((!username && !email) || !password) {
     throw new apiError(400, "Username/email and password are required");
   }
 
+  // ==========================================
+  // STEP 3: FIND USER BY USERNAME OR EMAIL
+  // ==========================================
   const user = await User.findOne({
     $or: [{ username }, { email }],
   });
@@ -121,96 +188,192 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new apiError(404, "User does not exist");
   }
 
+  // ==========================================
+  // STEP 4: VERIFY PASSWORD USING INSTANCE METHOD
+  // ==========================================
   const isPasswordValid = await user.isPasswordCorrect(password);
-
   if (!isPasswordValid) {
     throw new apiError(401, "Invalid Credentials");
   }
 
+  // ==========================================
+  // STEP 5: GENERATE ACCESS & REFRESH TOKENS
+  // ==========================================
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
     user._id
   );
 
+  // ==========================================
+  // STEP 6: GET USER WITHOUT SENSITIVE FIELDS
+  // ==========================================
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
 
+  // ==========================================
+  // STEP 7: SET COOKIE OPTIONS (SECURE)
+  // ==========================================
   const options = {
-    httpOnly: true,
-    secure: true,
+    httpOnly: true, // Prevents XSS attacks - JS cannot access cookie
+    secure: true, // Only send over HTTPS
   };
 
+  // ==========================================
+  // STEP 8: SEND RESPONSE WITH COOKIES AND DATA
+  // ==========================================
   return res
     .status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
+    .cookie("accessToken", accessToken, options) // Set access token cookie
+    .cookie("refreshToken", refreshToken, options) // Set refresh token cookie
     .json(
       new apiResponse(200, {
         user: loggedInUser,
-        accessToken,
-        refreshToken,
+        accessToken, // Also send in body for mobile apps
+        refreshToken, // Also send in body for mobile apps
         message: "User logged In Successfully",
       })
     );
+
+  // ==========================================
+  // COMPLETE LOGIN FLOW SUMMARY:
+  // ==========================================
+  /*
+  🔐 REQUEST → Controller receives credentials
+  
+  1️⃣ Client sends: { email: "user@example.com", password: "123456" }
+  
+  2️⃣ Database query: Find user by email/username
+  
+  3️⃣ Password verification: 
+     - bcrypt.compare(plainPassword, hashedPassword)
+     - Returns true/false
+  
+  4️⃣ Token Generation:
+     - generateAccessToken(): JWT with user data, expires 1d
+     - generateRefreshToken(): JWT with only userId, expires 10d
+  
+  5️⃣ Database Update:
+     - Store refreshToken in user document
+  
+  6️⃣ Response:
+     - Set HTTP-only cookies with both tokens
+     - Send user data + tokens in body
+  
+  🎯 FINAL: User is authenticated, tokens stored in cookies + DB
+  */
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
+  // ==========================================
+  // STEP 1: REMOVE REFRESH TOKEN FROM DATABASE
+  // ==========================================
   await User.findByIdAndUpdate(
-    req.user._id,
+    req.user._id, // User ID from verifyJWT middleware
     {
       $set: {
-        refreshToken: undefined,
+        refreshToken: undefined, // Clear refresh token from DB
       },
     },
     {
-      new: true,
+      new: true, // Return updated document
     }
   );
+
+  // ==========================================
+  // STEP 2: SET COOKIE OPTIONS FOR CLEARING
+  // ==========================================
   const options = {
     httpOnly: true,
     secure: true,
   };
 
+  // ==========================================
+  // STEP 3: CLEAR COOKIES AND SEND RESPONSE
+  // ==========================================
   res
     .status(200)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
+    .clearCookie("accessToken", options) // Remove access token cookie
+    .clearCookie("refreshToken", options) // Remove refresh token cookie
     .json(new apiResponse(200, "User logged out successfully"));
+
+  // ==========================================
+  // COMPLETE LOGOUT FLOW SUMMARY:
+  // ==========================================
+  /*
+  🚪 REQUEST → Protected route → verifyJWT middleware runs first
+  
+  1️⃣ verifyJWT:
+     - Extracts token from cookie/header
+     - Verifies token with ACCESS_TOKEN_SECRET
+     - Finds user by ID from decoded token
+     - Attaches req.user = user
+     - Calls next()
+  
+  2️⃣ logoutUser:
+     - Gets req.user._id from middleware
+     - Updates user document: refreshToken = undefined
+     - Clears both token cookies
+  
+  🎯 FINAL: User logged out, tokens invalid, can't access protected routes
+  */
 });
 
 const refresshAccessToken = asyncHandler(async (req, res) => {
   try {
+    // ==========================================
+    // STEP 1: GET REFRESH TOKEN FROM COOKIE OR BODY
+    // ==========================================
     const incomingRefreshToken =
-      (await req.cookies.refreshToken) || req.body.refreshToken;
+      req.cookies?.refreshToken || req.body.refreshToken;
 
     if (!incomingRefreshToken) {
       throw new apiError(401, "Unauthorized Request");
     }
 
-    const decodedToken = await jwt.verify(
+    // ==========================================
+    // STEP 2: VERIFY REFRESH TOKEN
+    // ==========================================
+    // FIX BUG: Should use REFRESH_TOKEN_SECRET, not ACCESS_TOKEN_SECRET
+    const decodedToken = jwt.verify(
       incomingRefreshToken,
-      process.env.ACCESS_TOKEN_SECRET
+      process.env.REFRESH_TOKEN_SECRET // 🔴 FIXED: Was ACCESS_TOKEN_SECRET
     );
 
+    // ==========================================
+    // STEP 3: FIND USER FROM DECODED TOKEN
+    // ==========================================
     const user = await User.findById(decodedToken?._id);
     if (!user) {
       throw new apiError(401, "Invalid Refresh Token");
     }
 
+    // ==========================================
+    // STEP 4: VERIFY TOKEN MATCHES DATABASE
+    // ==========================================
     if (incomingRefreshToken !== user?.refreshToken) {
       throw new apiError(401, "Refresh Token is expired or used");
     }
 
+    // ==========================================
+    // STEP 5: GENERATE NEW TOKENS
+    // ==========================================
+    const { accessToken, refreshToken: newRefreshToken } =
+      await generateAccessAndRefreshToken(user._id);
+
+    // ==========================================
+    // STEP 6: SET COOKIE OPTIONS
+    // ==========================================
     const options = {
       httpOnly: true,
       secure: true,
     };
 
-    const { accessToken, newRefreshToken } =
-      await generateAccessAndRefreshToken(user._id);
+    // ==========================================
+    // STEP 7: SEND NEW TOKENS IN COOKIES AND BODY
+    // ==========================================
     return res
       .status(200)
-      .cookie("accesshToken", accessToken, options)
+      .cookie("accessToken", accessToken, options) // FIXED: was "accesshToken"
       .cookie("refreshToken", newRefreshToken, options)
       .json(
         new apiResponse(
@@ -225,20 +388,30 @@ const refresshAccessToken = asyncHandler(async (req, res) => {
   } catch (error) {
     throw new apiError(401, error?.message || "Invalid Refresh Token");
   }
+
+  // ==========================================
+  // COMPLETE REFRESH TOKEN FLOW SUMMARY:
+  // ==========================================
+  /*
+  🔄 REQUEST → Client sends expired access token + valid refresh token
+  
+  1️⃣ Client detects 401 "Token expired"
+  
+  2️⃣ Client calls /refresh-token with refreshToken (cookie or body)
+  
+  3️⃣ Server verifies refreshToken using REFRESH_TOKEN_SECRET
+  
+  4️⃣ Server checks refreshToken matches DB record
+  
+  5️⃣ Server generates NEW accessToken and NEW refreshToken (rotation)
+  
+  6️⃣ Server updates DB with new refreshToken
+  
+  7️⃣ Server sends new tokens in cookies + response body
+  
+  🎯 FINAL: Client gets new access token, continues session without re-login
+  
+  */
 });
 
 export { registerUser, loginUser, logoutUser, refresshAccessToken };
-
-// ALGORITHM SUMMARY:
-// 1. Extract user data from request
-// 2. Validate all required fields are present
-// 3. Check for duplicate username/email in database
-// 4. Get uploaded file paths
-// 5. Validate avatar file exists
-// 6. Upload avatar to Cloudinary
-// 7. Upload cover image to Cloudinary (optional)
-// 8. Verify avatar upload succeeded
-// 9. Create user in database (password auto-hashed by pre-save hook)
-// 10. Retrieve user without sensitive data
-// 11. Verify user creation
-// 12. Return success response with user data
