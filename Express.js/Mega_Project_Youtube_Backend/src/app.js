@@ -5,8 +5,8 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 
-// Debug middleware - add this FIRST
-app.use((req, res, next) => {
+// Debug middleware - logs every request (runs FIRST for ALL requests)
+app.use((req, _, next) => {
   console.log(`\n=== NEW REQUEST ===`);
   console.log(`Time: ${new Date().toISOString()}`);
   console.log(`Method: ${req.method}`);
