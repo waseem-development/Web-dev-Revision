@@ -11,7 +11,7 @@ const { Schema } = mongoose;
 
 /**
  * USER SCHEMA DEFINITION
- * 
+ *
  * This defines the structure of each user document in MongoDB
  * Think of it as a blueprint for the "users" collection
  */
@@ -20,16 +20,16 @@ const userSchema = new Schema(
     // ==========================================
     // BASIC USER INFORMATION FIELDS
     // ==========================================
-    
+
     username: {
-      type: String,           // Data type: String
+      type: String, // Data type: String
       required: [true, "Username is required"], // Custom error message if missing
-      unique: true,           // No two users can have same username
-      lowercase: true,        // Automatically convert to lowercase
-      trim: true,             // Remove whitespace from both ends
-      index: true,            // Create index for faster searches
+      unique: true, // No two users can have same username
+      lowercase: true, // Automatically convert to lowercase
+      trim: true, // Remove whitespace from both ends
+      index: true, // Create index for faster searches
     },
-    
+
     email: {
       type: String,
       required: [true, "Email is required"],
@@ -38,65 +38,74 @@ const userSchema = new Schema(
       trim: true,
       index: true,
     },
-    
+
     fullName: {
       type: String,
       required: [true, "Full name is required"],
       trim: true,
       index: true,
     },
-    
+
     // ==========================================
     // SECURITY FIELDS
     // ==========================================
-    
+
     password: {
       type: String,
       required: [true, "Password is required"],
     },
-    
+
     // 👇 NEW: Password History - Track last 3 passwords
     passwordHistory: {
-      type: [{
-        password: {
-          type: String,
-          required: true,
+      type: [
+        {
+          password: {
+            type: String,
+            required: true,
+          },
+          changedAt: {
+            type: Date,
+            default: Date.now,
+          },
         },
-        changedAt: {
-          type: Date,
-          default: Date.now,
-        },
-      }],
+      ],
       default: [], // Initialize as empty array
       select: false, // Don't return by default (security)
     },
-    
+
     // ==========================================
     // MEDIA FIELDS
     // ==========================================
-    
+
     avatar: {
       type: String, // Cloudinary URL
       required: true,
     },
-    
+
     coverImage: {
       type: String, // Cloudinary URL
-      default: "../../public/coverImage.png"
+      default: "../../public/coverImage.png",
     },
-    
+    avatarPublicId: {
+      type: String,
+      default: "",
+    },
+    coverImagePublicId: {
+      type: String,
+      default: "",
+    },
     // ==========================================
     // AUTHENTICATION FIELDS
     // ==========================================
-    
+
     refreshToken: {
       type: String, // Current refresh token (for token rotation)
     },
-    
+
     // ==========================================
     // RELATIONSHIP FIELDS
     // ==========================================
-    
+
     watchHistory: [
       {
         type: Schema.Types.ObjectId,
@@ -104,8 +113,8 @@ const userSchema = new Schema(
       },
     ],
   },
-  { 
-    timestamps: true // Automatically add createdAt and updatedAt fields
+  {
+    timestamps: true, // Automatically add createdAt and updatedAt fields
   }
 );
 
@@ -161,7 +170,6 @@ userSchema.pre("save", async function () {
       // Keep only the most recent 3
       this.passwordHistory = this.passwordHistory.slice(-3);
     }
-
   } catch (error) {
     // If hashing fails, prevent save by throwing error
     throw error;
@@ -174,7 +182,7 @@ userSchema.pre("save", async function () {
 /**
  * This method can be called on any user object
  * Purpose: Check if provided password matches stored hash
- * 
+ *
  * @param {string} password - Plain text password to check
  * @returns {boolean} - True if match, false otherwise
  */
@@ -191,7 +199,7 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 // ==========================================
 /**
  * Purpose: Prevent password reuse by checking last 3 passwords
- * 
+ *
  * @param {string} newPassword - Proposed new password
  * @returns {boolean} - True if password was used before
  */
@@ -215,24 +223,25 @@ userSchema.methods.isPasswordInHistory = async function (newPassword) {
 /**
  * Creates a short-lived JWT for API authentication
  * Contains user identification data
- * 
+ *
  * @returns {string} - JWT access token
  */
 userSchema.methods.generateAccessToken = function () {
   // IMPORTANT: process.env.ACCESS_TOKEN_SECRET is a SECRET KEY, NOT a token
   // It's a string like "s7f9a2k1h5g8d3j6" stored in .env file
   // We use this secret to SIGN/CREATE a new token, NOT to pass an existing token
-  
+
   return jwt.sign(
-    {  // PAYLOAD: Data we want to store INSIDE the token
+    {
+      // PAYLOAD: Data we want to store INSIDE the token
       _id: this._id,
       email: this.email,
       username: this.username,
       fullName: this.fullName,
     },
-    process.env.ACCESS_TOKEN_SECRET,  // SECRET KEY for signing
+    process.env.ACCESS_TOKEN_SECRET, // SECRET KEY for signing
     {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1d",  // Token expiry
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1d", // Token expiry
     }
   );
   // OUTPUT: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2ExYjJjM2Q0ZTVmNmE3YjhjOWQwZTEiLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJ1c2VybmFtZSI6ImpvaG4xMjMiLCJmdWxsTmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNzQ2MjQwMDAwLCJleHAiOjE3NDYzMjY0MDB9..."
@@ -244,21 +253,22 @@ userSchema.methods.generateAccessToken = function () {
 /**
  * Creates a long-lived JWT for obtaining new access tokens
  * Contains minimal data for security
- * 
+ *
  * @returns {string} - JWT refresh token
  */
 userSchema.methods.generateRefreshToken = function () {
   // IMPORTANT: This uses a DIFFERENT secret key from access token
   // process.env.REFRESH_TOKEN_SECRET is a DIFFERENT string
   // Never use the same secret for both tokens!
-  
+
   return jwt.sign(
-    {  // Minimal payload - only user ID (more secure)
+    {
+      // Minimal payload - only user ID (more secure)
       _id: this._id,
     },
-    process.env.REFRESH_TOKEN_SECRET,  // DIFFERENT secret key
+    process.env.REFRESH_TOKEN_SECRET, // DIFFERENT secret key
     {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRY || "10d",  // Longer expiry
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRY || "10d", // Longer expiry
     }
   );
 };

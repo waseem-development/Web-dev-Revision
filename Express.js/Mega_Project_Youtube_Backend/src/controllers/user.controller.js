@@ -6,7 +6,10 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {
+  deleteFromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken";
 
@@ -16,7 +19,7 @@ import jwt from "jsonwebtoken";
 /**
  * Creates new access and refresh tokens for a user
  * Updates the refresh token in database
- * 
+ *
  * @param {string} userId - MongoDB ObjectId of user
  * @returns {Object} - { accessToken, refreshToken }
  */
@@ -25,7 +28,7 @@ const generateAccessAndRefreshToken = async (userId) => {
     // STEP 1: Find user by ID
     // We need the user document to call instance methods
     const user = await User.findById(userId);
-    
+
     if (!user) {
       throw new Error("User not found");
     }
@@ -45,7 +48,6 @@ const generateAccessAndRefreshToken = async (userId) => {
 
     // STEP 5: Return both tokens
     return { accessToken, refreshToken };
-    
   } catch (error) {
     throw new apiError(
       500,
@@ -59,7 +61,7 @@ const generateAccessAndRefreshToken = async (userId) => {
 // ==========================================
 /**
  * Endpoint: POST /api/v1/users/register
- * 
+ *
  * Flow:
  * 1. Extract user data from request body
  * 2. Validate all required fields present
@@ -80,13 +82,13 @@ const registerUser = asyncHandler(async (req, res) => {
   // ==========================================
   // Create an object with all fields to check
   const fields = { fullName, email, username, password };
-  
+
   // Object.entries converts {key:value} to [[key,value], ...]
   // .find returns first element where condition is true
   const emptyField = Object.entries(fields).find(
     ([key, value]) => !value || value.trim() === ""
   );
-  
+
   if (emptyField) {
     const [field] = emptyField; // Destructure to get field name
     throw new apiError(400, `${field} is required`);
@@ -148,11 +150,13 @@ const registerUser = asyncHandler(async (req, res) => {
   // ==========================================
   const user = await User.create({
     fullName,
-    avatar: avatar.url,          // Cloudinary URL
-    coverImage: coverImage?.url || "", // Optional field
+    avatar: avatar.url,
+    avatarPublicId: avatar.public_id,
+    coverImage: coverImage?.url || "",
+    coverImagePublicId: coverImage?.public_id || "", 
     email,
-    password,                     // Will be hashed by pre-save hook
-    username: username.toLowerCase(), // Ensure consistent case
+    password,
+    username: username.toLowerCase(),
   });
 
   // ==========================================
@@ -183,7 +187,7 @@ const registerUser = asyncHandler(async (req, res) => {
 // ==========================================
 /**
  * Endpoint: POST /api/v1/users/login
- * 
+ *
  * Flow:
  * 1. Extract credentials from request
  * 2. Validate required fields
@@ -245,9 +249,9 @@ const loginUser = asyncHandler(async (req, res) => {
   // ==========================================
   const options = {
     httpOnly: true, // Prevents XSS attacks - JS cannot access cookie
-    secure: true,   // Only send over HTTPS
-    sameSite: 'strict', // CSRF protection
-    maxAge: 24 * 60 * 60 * 1000 // 1 day for access token (will be overridden)
+    secure: true, // Only send over HTTPS
+    sameSite: "strict", // CSRF protection
+    maxAge: 24 * 60 * 60 * 1000, // 1 day for access token (will be overridden)
   };
 
   // ==========================================
@@ -255,8 +259,14 @@ const loginUser = asyncHandler(async (req, res) => {
   // ==========================================
   return res
     .status(200)
-    .cookie("accessToken", accessToken, { ...options, maxAge: 24 * 60 * 60 * 1000 })
-    .cookie("refreshToken", refreshToken, { ...options, maxAge: 10 * 24 * 60 * 60 * 1000 })
+    .cookie("accessToken", accessToken, {
+      ...options,
+      maxAge: 24 * 60 * 60 * 1000,
+    })
+    .cookie("refreshToken", refreshToken, {
+      ...options,
+      maxAge: 10 * 24 * 60 * 60 * 1000,
+    })
     .json(
       new apiResponse(200, {
         user: loggedInUser,
@@ -272,7 +282,7 @@ const loginUser = asyncHandler(async (req, res) => {
 /**
  * Endpoint: POST /api/v1/users/logout
  * Protected: Yes (requires verifyJWT middleware)
- * 
+ *
  * Flow:
  * 1. Remove refresh token from database
  * 2. Clear cookies
@@ -301,7 +311,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   const options = {
     httpOnly: true,
     secure: true,
-    sameSite: 'strict',
+    sameSite: "strict",
   };
 
   // ==========================================
@@ -319,7 +329,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 // ==========================================
 /**
  * Endpoint: POST /api/v1/users/refresh-token
- * 
+ *
  * Flow:
  * 1. Get refresh token from cookie or body
  * 2. Verify refresh token
@@ -335,7 +345,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     // ==========================================
     const incomingRefreshToken =
       req.cookies?.refreshToken || // Web browsers
-      req.body.refreshToken;      // Mobile apps
+      req.body.refreshToken; // Mobile apps
 
     if (!incomingRefreshToken) {
       throw new apiError(401, "Unauthorized request");
@@ -351,7 +361,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       incomingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET
     );
-    
+
     // decodedToken contains: { _id, iat, exp }
 
     // ==========================================
@@ -385,7 +395,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const options = {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: "strict",
     };
 
     // ==========================================
@@ -393,8 +403,14 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     // ==========================================
     return res
       .status(200)
-      .cookie("accessToken", accessToken, { ...options, maxAge: 24 * 60 * 60 * 1000 })
-      .cookie("refreshToken", newRefreshToken, { ...options, maxAge: 10 * 24 * 60 * 60 * 1000 })
+      .cookie("accessToken", accessToken, {
+        ...options,
+        maxAge: 24 * 60 * 60 * 1000,
+      })
+      .cookie("refreshToken", newRefreshToken, {
+        ...options,
+        maxAge: 10 * 24 * 60 * 60 * 1000,
+      })
       .json(
         new apiResponse(
           200,
@@ -416,7 +432,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 /**
  * Endpoint: POST /api/v1/users/change-password
  * Protected: Yes (requires verifyJWT middleware)
- * 
+ *
  * Flow:
  * 1. Validate inputs
  * 2. Verify old password
@@ -472,7 +488,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   const isInHistory = await user.isPasswordInHistory(newPassword);
   if (isInHistory) {
     throw new apiError(
-      400, 
+      400,
       "You have used this password recently. Please choose a different password."
     );
   }
@@ -498,7 +514,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 /**
  * Endpoint: GET /api/v1/users/get-current-user
  * Protected: Yes (requires verifyJWT middleware)
- * 
+ *
  * Returns the currently logged in user's data
  */
 const getCurrentUser = asyncHandler(async (req, res) => {
@@ -514,7 +530,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 /**
  * Endpoint: POST /api/v1/users/update-account-details
  * Protected: Yes (requires verifyJWT middleware)
- * 
+ *
  * Updates non-sensitive user information
  */
 const updateAccountDetails = asyncHandler(async (req, res) => {
@@ -532,15 +548,18 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   // ==========================================
   const existingUser = await User.findOne({
     $or: [{ username }, { email }],
-    _id: { $ne: req.user._id } // Exclude current user
+    _id: { $ne: req.user._id }, // Exclude current user
   }).lean(); // lean() gives plain JS object, slightly faster
 
   if (existingUser) {
     const conflicts = [];
     if (existingUser.username === username) conflicts.push("username");
     if (existingUser.email === email) conflicts.push("email");
-    
-    throw new apiError(409, `The Following field(s) are already taken: ${conflicts.join(", ")}`)
+
+    throw new apiError(
+      409,
+      `The Following field(s) are already taken: ${conflicts.join(", ")}`
+    );
   }
 
   // ==========================================
@@ -564,7 +583,9 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new apiResponse(200, updatedUser, "Account details updated successfully"));
+    .json(
+      new apiResponse(200, updatedUser, "Account details updated successfully")
+    );
 });
 
 // ==========================================
@@ -573,7 +594,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 /**
  * Endpoint: POST /api/v1/users/update-avatar
  * Protected: Yes (requires verifyJWT middleware)
- * 
+ *
  * Uploads new avatar image and updates user
  */
 const updateUserAvatar = asyncHandler(async (req, res) => {
@@ -592,6 +613,9 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   if (!avatar || !avatar.url) {
     throw new apiError(400, "Error while uploading the avatar");
   }
+  if (req.user.avatarPublicId) {
+    await deleteFromCloudinary(req.user.avatarPublicId);
+  }
 
   // ==========================================
   // STEP 3: UPDATE USER IN DATABASE
@@ -601,6 +625,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     {
       $set: {
         avatar: avatar.url,
+        avatarPublicId: avatar.public_id,
       },
     },
     { new: true }
@@ -621,7 +646,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 /**
  * Endpoint: POST /api/v1/users/update-cover-image
  * Protected: Yes (requires verifyJWT middleware)
- * 
+ *
  * Uploads new cover image and updates user
  */
 const updateUserCoverImage = asyncHandler(async (req, res) => {
@@ -641,6 +666,9 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     throw new apiError(400, "Error while uploading the cover image");
   }
 
+  if (req.user.coverImagePublicId) {
+    await deleteFromCloudinary(req.user.coverImagePublicId);
+  }
   // ==========================================
   // STEP 3: UPDATE USER IN DATABASE
   // ==========================================
@@ -649,6 +677,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     {
       $set: {
         coverImage: coverImage.url,
+        coverImagePublicId: coverImage.public_id,
       },
     },
     { new: true }
@@ -660,7 +689,9 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new apiResponse(200, updatedUser, "Cover image updated successfully"));
+    .json(
+      new apiResponse(200, updatedUser, "Cover image updated successfully")
+    );
 });
 
 // ==========================================
