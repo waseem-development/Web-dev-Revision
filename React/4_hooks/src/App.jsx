@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import "./App.css";
 
 function App() {
@@ -6,6 +6,7 @@ function App() {
   const [numbersAllowed, setNumbersAllowed] = useState(false);
   const [symbolsAllowed, setSymbolsAllowed] = useState(false);
   const [password, setPassword] = useState("");
+
   const passwordGenerator = useCallback(() => {
     let pass = "";
     let str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -18,6 +19,24 @@ function App() {
     }
     setPassword(pass);
   }, [length, numbersAllowed, symbolsAllowed, setPassword]);
+  useEffect(() => {
+    fetch("https://jsonplaceholder.typicode.com/todos/1")
+      .then((res) => res.json())
+      .then((data) => console.log(data))
+      .catch((err) => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log("Hello");
+    }, 1000);
+
+    return () => clearInterval(interval); // cleanup on unmount
+  }, []); // empty dependency = start once
+
+  useEffect(() => {
+    passwordGenerator();
+  }, [length, numbersAllowed, symbolsAllowed, passwordGenerator]);
   const copyPasswordToClipboard = () => {
     if (!password) return;
     navigator.clipboard.writeText(password);

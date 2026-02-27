@@ -468,6 +468,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   // ==========================================
   // STEP 5: CHECK PASSWORD HISTORY (Last 3 passwords)
   // ==========================================
+  // @ts-ignore
   const isInHistory = await user.isPasswordInHistory(newPassword);
   if (isInHistory) {
     throw new apiError(
@@ -532,15 +533,14 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   const existingUser = await User.findOne({
     $or: [{ username }, { email }],
     _id: { $ne: req.user._id } // Exclude current user
-  });
+  }).lean(); // lean() gives plain JS object, slightly faster
 
   if (existingUser) {
-    if (existingUser.username === username) {
-      throw new apiError(409, "Username already taken");
-    }
-    if (existingUser.email === email) {
-      throw new apiError(409, "Email already taken");
-    }
+    const conflicts = [];
+    if (existingUser.username === username) conflicts.push("username");
+    if (existingUser.email === email) conflicts.push("email");
+    
+    throw new apiError(409, `The Following field(s) are already taken: ${conflicts.join(", ")}`)
   }
 
   // ==========================================
