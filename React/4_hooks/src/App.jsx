@@ -1,46 +1,72 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
 
 function App() {
+  // ---------------- STATE ----------------
   const [length, setLength] = useState(8);
   const [numbersAllowed, setNumbersAllowed] = useState(false);
   const [symbolsAllowed, setSymbolsAllowed] = useState(false);
   const [password, setPassword] = useState("");
 
-  const passwordGenerator = useCallback(() => {
+  const passwordRef = useRef(null);
+
+  // ---------------- PASSWORD GENERATOR ----------------
+  const generatePassword = () => {
     let pass = "";
     let str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    if (numbersAllowed) str += "012345689";
+
+    if (numbersAllowed) str += "0123456789"; // fixed typo
     if (symbolsAllowed) str += "!@#$%^&*";
 
-    for (let index = 0; index < length; index++) {
-      let char = Math.floor(Math.random() * str.length);
-      pass += str.charAt(char);
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * str.length);
+      pass += str.charAt(randomIndex);
     }
+
     setPassword(pass);
-  }, [length, numbersAllowed, symbolsAllowed, setPassword]);
+  };
+
+  // Auto-generate password when options change
   useEffect(() => {
-    fetch("https://jsonplaceholder.typicode.com/todos/1")
+    generatePassword();
+  }, [length, numbersAllowed, symbolsAllowed]);
+
+  // Example API call (runs once)
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch("https://jsonplaceholder.typicode.com/todos/1", {
+      signal: controller.signal,
+    })
       .then((res) => res.json())
       .then((data) => console.log(data))
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          console.error(err);
+        }
+      });
+
+    return () => controller.abort(); // cleanup
   }, []);
 
+  // Example interval (runs once)
   useEffect(() => {
     const interval = setInterval(() => {
       console.log("Hello");
     }, 1000);
 
-    return () => clearInterval(interval); // cleanup on unmount
-  }, []); // empty dependency = start once
+    return () => clearInterval(interval);
+  }, []);
 
-  useEffect(() => {
-    passwordGenerator();
-  }, [length, numbersAllowed, symbolsAllowed, passwordGenerator]);
+  // ---------------- COPY FUNCTION ----------------
   const copyPasswordToClipboard = () => {
-    if (!password) return;
-    navigator.clipboard.writeText(password);
-    alert("Password copied to clipboard!");
+    if (!passwordRef.current) return;
+
+    passwordRef.current.select();
+    navigator.clipboard
+      .writeText(passwordRef.current.value)
+      .then(() => alert("Password copied to clipboard!"))
+      .catch(() => alert("Clipboard permission denied"));
   };
 
   return (
@@ -52,9 +78,9 @@ function App() {
         <div className="flex">
           <input
             type="text"
-            placeholder="Generated password"
             readOnly
             value={password}
+            ref={passwordRef}
             className="w-full p-2 rounded bg-gray-900 text-white text-center"
           />
           <button
@@ -83,11 +109,8 @@ function App() {
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
-              defaultChecked={numbersAllowed}
-              id="numberInput"
-              onChange={() => {
-                setNumbersAllowed((prev) => !prev);
-              }}
+              checked={numbersAllowed}
+              onChange={() => setNumbersAllowed((prev) => !prev)}
             />
             Numbers
           </label>
@@ -95,11 +118,8 @@ function App() {
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
-              defaultChecked={symbolsAllowed}
-              id="SymbolInput"
-              onChange={() => {
-                setSymbolsAllowed((prev) => !prev);
-              }}
+              checked={symbolsAllowed}
+              onChange={() => setSymbolsAllowed((prev) => !prev)}
             />
             Symbols
           </label>
@@ -108,7 +128,7 @@ function App() {
         {/* Generate Button */}
         <button
           className="bg-blue-600 hover:bg-blue-700 transition rounded py-2 font-semibold"
-          onClick={passwordGenerator}
+          onClick={generatePassword}
         >
           Generate Password
         </button>
